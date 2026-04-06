@@ -1,7 +1,6 @@
 # ==============================================================================
 # Project: NAEP Learning Loss
-# Scope: Digital Divide & Resilience Analysis
-# Purpose: Interaction analysis of broadband access and post-2020 learning loss
+# Additional Scope: Digital Divide (analysis of broadband access and post-2020 learning loss) & Resilience Analysis
 # ==============================================================================
 
 # --- 1. Load Libraries ---

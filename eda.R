@@ -1,6 +1,5 @@
 # -----------------------------
 # EDA — feature correlation matrix
-# Run data.R first to build final_dataset.csv
 # Run data.R first to build dataset.csv
 # -----------------------------
 library(dplyr)

@@ -1,16 +1,17 @@
 # -----------------------------
 # EDA — feature correlation matrix
 # Run data.R first to build final_dataset.csv
+# Run data.R first to build dataset.csv
 # -----------------------------
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-if (!file.exists("final_dataset.csv")) {
-  stop("final_dataset.csv not found. Run data.R first.", call. = FALSE)
+if (!file.exists("dataset.csv")) {
+  stop("dataset.csv not found. Run data.R first.", call. = FALSE)
 }
 
-df <- read.csv("final_dataset.csv", stringsAsFactors = FALSE, check.names = FALSE)
+df <- read.csv("dataset.csv", stringsAsFactors = FALSE, check.names = FALSE)
 
 feat <- df %>%
   select(where(is.numeric))

@@ -130,6 +130,8 @@ get_census_data <- function(year) {
   }
 
   # Add computer ownership only for newer years
+  if (year >= 2016) {
+    vars <- c(vars,
               computer_total_households = "B28005_001",
               no_computer_households = "B28005_002")
   }
@@ -155,6 +157,8 @@ get_census_data <- function(year) {
         child_pov_f_u5 + child_pov_f_5 + child_pov_f_6_11 + child_pov_f_12_14 + child_pov_f_15 + child_pov_f_16_17,
       child_total_count = child_poverty_count +
         child_npov_m_u5 + child_npov_m_5 + child_npov_m_6_11 + child_npov_m_12_14 + child_npov_m_15 + child_npov_m_16_17 +
+        child_npov_f_u5 + child_npov_f_5 + child_npov_f_6_11 + child_npov_f_12_14 + child_npov_f_15 + child_npov_f_16_17,
+      child_poverty_rate = child_poverty_count / child_total_count
     )
 
   # Add internet rate only if available

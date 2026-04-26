@@ -36,7 +36,7 @@ state_map <- bind_rows(
 # -----------------------------
 get_naep <- function(year, grade) {
   url <- "https://www.nationsreportcard.gov/Dataservice/GetAdhocData.aspx"
-  
+
   res <- GET(url, query = list(
     type = "data",
     subject = "reading",
@@ -44,20 +44,20 @@ get_naep <- function(year, grade) {
     subscale = "RRPCM",
     variable = "TOTAL",
     jurisdiction = paste(states, collapse = ","),
-    stattype = "MN:MN",  
+    stattype = "MN:MN",
     year = year
   ))
-  
+
   raw <- content(res, "text", encoding = "UTF-8")
   data <- fromJSON(raw)
-  
+
   df <- data$result %>%
     select(jurisdiction, year, value) %>%   # value = score
     mutate(
       year = as.numeric(year),
       grade = as.numeric(grade)
     )
-  
+
   return(df)
 }
 
@@ -75,7 +75,7 @@ naep_df <- naep_df %>%
 # 2. CENSUS (ACS) DATA
 # -----------------------------
 get_census_data <- function(year) {
-  
+
   # Base variables (always exist)
   vars <- c(
     median_income = "B19013_001",

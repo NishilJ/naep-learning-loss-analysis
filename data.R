@@ -15,6 +15,7 @@ census_api_key("046fb55b77651b85fa665c605e7c35b7d89905ce", install = TRUE)
 # Parameters
 # -----------------------------
 years <- c(2013, 2015, 2017, 2019, 2022, 2024)
+grades <- c(4, 8)
 states <- c("AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA",
             "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA",
             "MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
@@ -33,13 +34,13 @@ state_map <- bind_rows(
 
 # 1. NAEP API FUNCTION
 # -----------------------------
-get_naep <- function(year) {
+get_naep <- function(year, grade) {
   url <- "https://www.nationsreportcard.gov/Dataservice/GetAdhocData.aspx"
   
   res <- GET(url, query = list(
     type = "data",
     subject = "reading",
-    grade = 4,
+    grade = grade,
     subscale = "RRPCM",
     variable = "TOTAL",
     jurisdiction = paste(states, collapse = ","),
@@ -52,13 +53,18 @@ get_naep <- function(year) {
   
   df <- data$result %>%
     select(jurisdiction, year, value) %>%   # value = score
-    mutate(year = as.numeric(year))
+    mutate(
+      year = as.numeric(year),
+      grade = as.numeric(grade)
+    )
   
   return(df)
 }
 
 cat("Step 1: Fetching NAEP Scores via API...\n")
-naep_df <- bind_rows(lapply(years, get_naep))
+naep_df <- bind_rows(lapply(grades, function(g) {
+  bind_rows(lapply(years, function(y) get_naep(y, g)))
+}))
 
 # Clean NAEP
 naep_df <- naep_df %>%
@@ -124,7 +130,7 @@ merged_df <- merged_df %>%
     post2020 = ifelse(year >= 2022, 1, 0)
   ) %>%
   filter(!is.na(score), !is.na(median_income), !is.na(poverty_rate)) %>%
-  select(state, year, score, median_income, total_pop, poverty_rate, internet_rate, post2020)
+  select(state, year, grade, score, median_income, total_pop, poverty_rate, internet_rate, post2020)
 
 # 5. SAVE DATASET
 # -----------------------------

@@ -24,12 +24,28 @@ numeric_covariates <- c(
 #' @param shap_sample_max If NULL, use all post-2020 test rows. Set (e.g. 500) to cap runtime.
 run_xgboost_shap <- function(
     path = "dataset.csv",
+    use_cached_fit = TRUE,
+    cached_fit_path = file.path("output", "xgboost_score_fit.rds"),
+    force_refit = FALSE,
     shap_sample_max = NULL,
     random_seed = 42L,
     summary_top_n = 15L,
     dependence_top_k = 5L,
     validation_tol = 1e-4) {
-  fit <- run_xgboost_score(path)
+  required_fit_fields <- c("model", "test_matrix", "test_df")
+  load_cached_fit <- isTRUE(use_cached_fit) && !isTRUE(force_refit) && file.exists(cached_fit_path)
+
+  if (load_cached_fit) {
+    fit <- readRDS(cached_fit_path)
+    if (!all(required_fit_fields %in% names(fit))) {
+      warning("Cached fit missing expected fields; refitting model instead.")
+      fit <- run_xgboost_score(path, cache_fit = TRUE, cache_path = cached_fit_path)
+    } else {
+      cat(sprintf("Loaded cached fit: %s\n", cached_fit_path))
+    }
+  } else {
+    fit <- run_xgboost_score(path, cache_fit = isTRUE(use_cached_fit), cache_path = cached_fit_path)
+  }
   model <- fit$model
   test_matrix <- fit$test_matrix
   test_df <- fit$test_df
@@ -198,4 +214,6 @@ run_xgboost_shap <- function(
   ))
 }
 
-run_xgboost_shap("dataset.csv")
+if (isTRUE(getOption("xgboost_shap.autorun", default = TRUE))) {
+  run_xgboost_shap("dataset.csv")
+}

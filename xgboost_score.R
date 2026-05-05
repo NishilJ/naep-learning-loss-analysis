@@ -7,7 +7,10 @@ if (length(missing_pkgs) > 0) {
 library(xgboost)
 library(Matrix)
 
-run_xgboost_score <- function(path = "dataset.csv") {
+run_xgboost_score <- function(
+    path = "dataset.csv",
+    cache_fit = TRUE,
+    cache_path = file.path("output", "xgboost_score_fit.rds")) {
   df <- read.csv(path, stringsAsFactors = FALSE)
 
   keep_cols <- c(
@@ -176,7 +179,7 @@ run_xgboost_score <- function(path = "dataset.csv") {
   importance <- xgb.importance(model = final_model, feature_names = colnames(train_matrix))
   print(head(importance, 15))
 
-  invisible(list(
+  fit_obj <- list(
     model = final_model,
     best_params = best_params,
     rolling_validation = rolling_results,
@@ -192,7 +195,18 @@ run_xgboost_score <- function(path = "dataset.csv") {
       actual_score = test_label,
       predicted_score = preds
     )
-  ))
+  )
+
+  if (isTRUE(cache_fit)) {
+    cache_dir <- dirname(cache_path)
+    if (!dir.exists(cache_dir)) {
+      dir.create(cache_dir, recursive = TRUE)
+    }
+    saveRDS(fit_obj, cache_path)
+    cat(sprintf("\nSaved fitted model bundle: %s\n", cache_path))
+  }
+
+  invisible(fit_obj)
 }
 
 if (isTRUE(getOption("xgboost_score.autorun", default = TRUE))) {

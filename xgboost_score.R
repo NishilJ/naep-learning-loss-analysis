@@ -181,6 +181,10 @@ run_xgboost_score <- function(path = "dataset.csv") {
     best_params = best_params,
     rolling_validation = rolling_results,
     metrics = list(rmse = rmse, mae = mae, r2 = r2),
+    train_df = train_df,
+    test_df = test_df,
+    train_matrix = train_matrix,
+    test_matrix = test_matrix,
     predictions = data.frame(
       state = test_df$state,
       year = test_df$year,
@@ -191,5 +195,7 @@ run_xgboost_score <- function(path = "dataset.csv") {
   ))
 }
 
-run_xgboost_score("dataset.csv")
+if (isTRUE(getOption("xgboost_score.autorun", default = TRUE))) {
+  run_xgboost_score("dataset.csv")
+}
  

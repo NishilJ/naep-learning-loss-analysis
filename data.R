@@ -79,6 +79,7 @@ get_census_data <- function(year) {
   # Base variables (always exist)
   vars <- c(
     median_income = "B19013_001",
+    gini_coefficient = "B19083_001",
     poverty = "B17001_002",
     total_pop = "B17001_001",
     # Unemployment rate components
@@ -201,7 +202,7 @@ merged_df <- merged_df %>%
   filter(!is.na(score), !is.na(median_income), !is.na(poverty_rate)) %>%
   select(
     state, year, grade, score,
-    median_income, total_pop, poverty_rate, child_poverty_rate,
+    median_income, gini_coefficient, total_pop, poverty_rate, child_poverty_rate,
     unemployment_rate, pct_black, pct_hispanic, bach_or_higher_rate,
     no_computer_rate, internet_rate, post2020
   )

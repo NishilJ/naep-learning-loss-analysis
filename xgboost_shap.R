@@ -12,7 +12,7 @@ options(xgboost_score.autorun = FALSE)
 source("xgboost_score.R")
 
 numeric_covariates <- c(
-  "median_income", "poverty_rate", "unemployment_rate",
+  "median_income", "gini_coefficient", "poverty_rate", "unemployment_rate",
   "pct_black", "pct_hispanic", "bach_or_higher_rate",
   "no_computer_rate", "internet_rate"
 )

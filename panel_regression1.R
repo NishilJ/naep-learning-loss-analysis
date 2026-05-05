@@ -2,18 +2,29 @@
 # Full Panel Regression Model
 # ----------------------------
 
-install.packages("plm")
-install.packages("stargazer")
+required_pkgs <- c(
+  "tidyverse", "plm", "lmtest", "sandwich", "broom", "margins"
+)
+missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace, quietly = TRUE)]
+if (length(missing_pkgs) > 0) {
+  install.packages(missing_pkgs, repos = "https://cloud.r-project.org")
+}
 
 library(tidyverse)
 library(plm)
 library(lmtest)
 library(sandwich)
-library(stargazer)
-install.packages(c("officer", "flextable", "broom"))
+
+# Project-relative paths
+project_root <- getwd()
+input_path <- file.path(project_root, "dataset.csv")
+output_dir <- file.path(project_root, "output", "panel_regression")
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
 
 # Load data
-df <- read.csv("D:/PhD Study/Spring 2026/EPPS 6323/Project/Projectdataset.csv")
+df <- read.csv(input_path)
 # ----------------------------
 # SPLIT BY GRADE
 # ----------------------------
@@ -88,148 +99,8 @@ se_m3_g4_vec <- se_m3_g4[, 2]
 se_m2_g8_vec <- se_m2_g8[, 2]
 se_m3_g8_vec <- se_m3_g8[, 2]
 
-# ----------------------------
-# REGRESSION TABLES
-# ----------------------------
-# Grade 4
-stargazer(m1_g4, m2_g4, m3_g4,
-          type = "html",
-          se = list(NULL, se_m2_g4_vec, se_m3_g4_vec),
-          title = "Table 1. Panel Regression: 4th Grade NAEP Reading Scores",
-          dep.var.labels = "Reading Score (Grade 4)",
-          covariate.labels = c("Post-2020", "Child Poverty Rate", "Median Income",
-                               "Internet Access Rate", "Unemployment Rate",
-                               "Bachelor's or Higher Rate", "% Black", "% Hispanic",
-                               "Post-2020 × Child Poverty", "Post-2020 × Median Income",
-                               "Post-2020 × Internet Rate"),
-          add.lines = list(c("State FE",      "No",  "Yes", "Yes"),
-                           c("Year FE",       "No",  "Yes", "Yes"),
-                           c("Clustered SE",  "No",  "Yes", "Yes")),
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          out = "table_grade4.html")
-
-# Grade 8
-stargazer(m1_g8, m2_g8, m3_g8,
-          type = "html",
-          se = list(NULL, se_m2_g8_vec, se_m3_g8_vec),
-          title = "Table 2. Panel Regression: 8th Grade NAEP Reading Scores",
-          dep.var.labels = "Reading Score (Grade 8)",
-          covariate.labels = c("Post-2020", "Child Poverty Rate", "Median Income",
-                               "Internet Access Rate", "Unemployment Rate",
-                               "Bachelor's or Higher Rate", "% Black", "% Hispanic",
-                               "Post-2020 × Child Poverty", "Post-2020 × Median Income",
-                               "Post-2020 × Internet Rate"),
-          add.lines = list(c("State FE",      "No",  "Yes", "Yes"),
-                           c("Year FE",       "No",  "Yes", "Yes"),
-                           c("Clustered SE",  "No",  "Yes", "Yes")),
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          out = "table_grade8.html")
-
-library(officer)
-library(flextable)
+# Keep script output visual-only (PNG files).
 library(broom)
-
-# ----------------------------
-# FUNCTION TO BUILD REGRESSION TABLE
-# ----------------------------
-make_reg_table <- function(m1, m2, m3, se2, se3, grade) {
-  
-  # Tidy each model
-  t1 <- tidy(m1) %>% mutate(model = "Model 1 (OLS)")
-  t2 <- tidy(m2) %>% mutate(model = "Model 2 (FE)")
-  t3 <- tidy(m3) %>% mutate(model = "Model 3 (FE + Interactions)")
-  
-  # Replace SEs with robust ones for m2 and m3
-  t2$std.error <- se2[, 2]
-  t2$statistic <- t2$estimate / t2$std.error
-  t2$p.value   <- 2 * pt(-abs(t2$statistic), df = df.residual(m2))
-  
-  t3$std.error <- se3[, 2]
-  t3$statistic <- t3$estimate / t3$std.error
-  t3$p.value   <- 2 * pt(-abs(t3$statistic), df = df.residual(m3))
-  
-  # Add significance stars
-  add_stars <- function(p) {
-    case_when(
-      p < 0.001 ~ "***",
-      p < 0.01  ~ "**",
-      p < 0.05  ~ "*",
-      TRUE      ~ ""
-    )
-  }
-  
-  format_coef <- function(tdf) {
-    tdf %>%
-      mutate(
-        coef_str = paste0(round(estimate, 3), add_stars(p.value),
-                          "\n(", round(std.error, 3), ")")
-      ) %>%
-      select(term, model, coef_str)
-  }
-  
-  combined <- bind_rows(format_coef(t1), format_coef(t2), format_coef(t3)) %>%
-    pivot_wider(names_from = model, values_from = coef_str, values_fill = "")
-  
-  # Clean term names
-  combined <- combined %>%
-    mutate(term = recode(term,
-                         "post2020"                        = "Post-2020",
-                         "child_poverty_rate"              = "Child Poverty Rate",
-                         "median_income"                   = "Median Income",
-                         "internet_rate"                   = "Internet Access Rate",
-                         "unemployment_rate"               = "Unemployment Rate",
-                         "bach_or_higher_rate"             = "Bachelor's or Higher Rate",
-                         "pct_black"                       = "% Black",
-                         "pct_hispanic"                    = "% Hispanic",
-                         "post2020:child_poverty_rate"     = "Post-2020 × Child Poverty",
-                         "post2020:median_income"          = "Post-2020 × Median Income",
-                         "post2020:internet_rate"          = "Post-2020 × Internet Rate",
-                         "(Intercept)"                     = "Intercept"
-    ))
-  
-  # Build flextable
-  ft <- flextable(combined) %>%
-    set_header_labels(term = "Variable") %>%
-    add_header_row(
-      values = c("", paste0("Dependent Variable: Grade ", grade, " Reading Score")),
-      colwidths = c(1, 3)
-    ) %>%
-    align(align = "center", part = "all") %>%
-    align(j = 1, align = "left", part = "all") %>%
-    bold(part = "header") %>%
-    fontsize(size = 10, part = "all") %>%
-    font(fontname = "Times New Roman", part = "all") %>%
-    border_outer() %>%
-    border_inner_h() %>%
-    autofit()
-  
-  return(ft)
-}
-
-# ----------------------------
-# BUILD TABLES
-# ----------------------------
-ft_g4 <- make_reg_table(m1_g4, m2_g4, m3_g4, se_m2_g4, se_m3_g4, grade = 4)
-ft_g8 <- make_reg_table(m1_g8, m2_g8, m3_g8, se_m2_g8, se_m3_g8, grade = 8)
-
-# ----------------------------
-# EXPORT TO WORD
-# ----------------------------
-doc <- read_docx() %>%
-  body_add_par("Table 1. Panel Regression: 4th Grade NAEP Reading Scores",
-               style = "heading 2") %>%
-  body_add_flextable(ft_g4) %>%
-  body_add_par("Note: Robust standard errors clustered at state level in parentheses. * p<0.05, ** p<0.01, *** p<0.001",
-               style = "Normal") %>%
-  body_add_par("", style = "Normal") %>%  # spacer
-  body_add_par("Table 2. Panel Regression: 8th Grade NAEP Reading Scores",
-               style = "heading 2") %>%
-  body_add_flextable(ft_g8) %>%
-  body_add_par("Note: Robust standard errors clustered at state level in parentheses. * p<0.05, ** p<0.01, *** p<0.001",
-               style = "Normal")
-
-print(doc, target = "D:/PhD Study/Spring 2026/EPPS 6323/Project/regression_tables.docx")
-cat("Saved: regression_tables.docx\n")
 
 # ─────────────────────────────────────────
 # PLOT 1: REGRESSION COEFFICIENT PLOTS
@@ -243,23 +114,22 @@ library(margins)
 # PLOT 1: COEFFICIENT PLOT
 # ─────────────────────────────────────────
 
-# Tidy models with robust SEs
-tidy_model <- function(model, se_robust, model_name, grade) {
-  coefs <- as.data.frame(se_robust)
-  coefs$term <- rownames(coefs)
-  coefs <- coefs %>%
-    rename(estimate = Estimate, std.error = `Std. Error`) %>%
-    mutate(
-      conf.low  = estimate - 1.96 * std.error,
-      conf.high = estimate + 1.96 * std.error,
-      model = model_name,
-      grade = grade
-    ) %>%
-    select(term, estimate, conf.low, conf.high, model, grade)
-  return(coefs)
+# OLS helper
+tidy_ols <- function(model, model_name, grade) {
+  t1 <- broom::tidy(model)
+  data.frame(
+    term      = t1$term,
+    estimate  = t1$estimate,
+    std.error = t1$std.error,
+    conf.low  = t1$estimate - 1.96 * t1$std.error,
+    conf.high = t1$estimate + 1.96 * t1$std.error,
+    model     = model_name,
+    grade     = grade,
+    stringsAsFactors = FALSE
+  )
 }
 
-# OLS uses default SEs
+# FE helper with robust SEs
 tidy_model <- function(model, se_robust, model_name, grade) {
   data.frame(
     term      = rownames(se_robust),
@@ -324,7 +194,7 @@ plot1 <- ggplot(coef_all, aes(x = estimate, y = term, color = model, shape = mod
     plot.title       = element_text(face = "bold")
   )
 
-ggsave("D:/PhD Study/Spring 2026/EPPS 6323/Project/plot1_coefplot.png",
+ggsave(file.path(output_dir, "plot1_coefplot.png"),
        plot1, width = 12, height = 8, dpi = 300)
 
 # ─────────────────────────────────────────
@@ -380,7 +250,7 @@ plot2 <- ggplot(pred_df, aes(x = fitted_m2, y = score, color = period)) +
     plot.title       = element_text(face = "bold")
   )
 
-ggsave("D:/PhD Study/Spring 2026/EPPS 6323/Project/plot2_predicted_actual.png",
+ggsave(file.path(output_dir, "plot2_predicted_actual.png"),
        plot2, width = 10, height = 6, dpi = 300)
 
 # ─────────────────────────────────────────
@@ -423,7 +293,7 @@ plot3 <- ggplot(marginal_df, aes(x = income_usd / 1000, y = marginal_effect)) +
   theme_bw(base_size = 11) +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("D:/PhD Study/Spring 2026/EPPS 6323/Project/plot3_interaction.png",
+ggsave(file.path(output_dir, "plot3_interaction.png"),
        plot3, width = 9, height = 6, dpi = 300)
 
 # ─────────────────────────────────────────
@@ -467,7 +337,7 @@ plot4 <- ggplot(trend_df, aes(x = year, y = score, color = state, group = state)
     axis.text.x      = element_text(angle = 45, hjust = 1)
   )
 
-ggsave("D:/PhD Study/Spring 2026/EPPS 6323/Project/plot4_trends.png",
+ggsave(file.path(output_dir, "plot4_trends.png"),
        plot4, width = 12, height = 7, dpi = 300)
 
 cat("All 4 plots saved.\n")

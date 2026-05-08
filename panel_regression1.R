@@ -80,6 +80,69 @@ se_m2_g8 <- coeftest(m2_g8, vcov = vcovHC(m2_g8, type = "HC1", cluster = "group"
 se_m3_g8 <- coeftest(m3_g8, vcov = vcovHC(m3_g8, type = "HC1", cluster = "group"))
 
 # ----------------------------
+# MODEL OVERALL METRICS TABLE
+# ----------------------------
+safe_numeric <- function(x) {
+  if (is.null(x) || length(x) == 0 || all(is.na(x))) {
+    return(NA_real_)
+  }
+  as.numeric(x[1])
+}
+
+extract_model_metrics <- function(model, model_label, grade_label) {
+  model_summary <- summary(model)
+
+  r2 <- NA_real_
+  adj_r2 <- NA_real_
+  if (inherits(model, "lm")) {
+    r2 <- safe_numeric(model_summary$r.squared)
+    adj_r2 <- safe_numeric(model_summary$adj.r.squared)
+  } else if (inherits(model, "plm")) {
+    # plm summary for within models reports within R^2 in r.squared.
+    r2 <- safe_numeric(model_summary$r.squared["rsq"])
+    adj_r2 <- safe_numeric(model_summary$r.squared["adjrsq"])
+  }
+
+  resid_vals <- tryCatch(
+    as.numeric(residuals(model)),
+    error = function(e) NA_real_
+  )
+  rmse <- if (all(is.na(resid_vals))) NA_real_ else sqrt(mean(resid_vals^2, na.rm = TRUE))
+  mae <- if (all(is.na(resid_vals))) NA_real_ else mean(abs(resid_vals), na.rm = TRUE)
+
+  aic_val <- tryCatch(as.numeric(AIC(model)), error = function(e) NA_real_)
+  bic_val <- tryCatch(as.numeric(BIC(model)), error = function(e) NA_real_)
+  n_val <- tryCatch(as.numeric(nobs(model)), error = function(e) NA_real_)
+
+  data.frame(
+    Grade = grade_label,
+    Model = model_label,
+    `R2 (Within for FE models)` = r2,
+    Adjusted_R2 = adj_r2,
+    RMSE = rmse,
+    MAE = mae,
+    AIC = aic_val,
+    BIC = bic_val,
+    N = n_val,
+    stringsAsFactors = FALSE
+  )
+}
+
+metrics_tbl <- bind_rows(
+  extract_model_metrics(m1_g4, "Model 1 (OLS)", "Grade 4"),
+  extract_model_metrics(m2_g4, "Model 2 (FE)", "Grade 4"),
+  extract_model_metrics(m3_g4, "Model 3 (FE + Interactions)", "Grade 4"),
+  extract_model_metrics(m1_g8, "Model 1 (OLS)", "Grade 8"),
+  extract_model_metrics(m2_g8, "Model 2 (FE)", "Grade 8"),
+  extract_model_metrics(m3_g8, "Model 3 (FE + Interactions)", "Grade 8")
+)
+
+metrics_out_path <- file.path(output_dir, "panel_model_metrics.csv")
+write.csv(metrics_tbl, metrics_out_path, row.names = FALSE)
+print(metrics_tbl)
+cat(sprintf("Saved model metrics: %s\n", metrics_out_path))
+
+# ----------------------------
 # Fixed Effects
 # ----------------------------
 re_g4 <- plm(f_fe, data = panel4, model = "random", 

@@ -12,7 +12,7 @@ run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
 
   keep_cols <- c(
     "state", "year", "grade", "score",
-    "median_income", "gini_coefficient", "poverty_rate", "unemployment_rate",
+    "median_income", "gini_coefficient", "child_poverty_rate", "unemployment_rate",
     "pct_black", "pct_hispanic", "bach_or_higher_rate",
     "no_computer_rate", "internet_rate"
   )
@@ -71,7 +71,7 @@ run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
     }
 
     numeric_features <- c(
-      "median_income", "gini_coefficient", "poverty_rate", "unemployment_rate",
+      "median_income", "gini_coefficient", "child_poverty_rate", "unemployment_rate",
       "pct_black", "pct_hispanic", "bach_or_higher_rate",
       "no_computer_rate", "internet_rate", "year_scaled"
     )

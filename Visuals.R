@@ -71,11 +71,35 @@ naep_df <- naep_df %>%
 # -----------------------------
 get_census_data <- function(year) {
   
-  # Base variables (always exist)
+  # Base variables (always exist); child poverty shares from B17001 (same blocks as data.R)
   vars <- c(
     median_income = "B19013_001",
+    total_pop = "B17001_001",
     poverty = "B17001_002",
-    total_pop = "B17001_001"
+    child_pov_m_u5 = "B17001_004",
+    child_pov_m_5 = "B17001_005",
+    child_pov_m_6_11 = "B17001_006",
+    child_pov_m_12_14 = "B17001_007",
+    child_pov_m_15 = "B17001_008",
+    child_pov_m_16_17 = "B17001_009",
+    child_pov_f_u5 = "B17001_018",
+    child_pov_f_5 = "B17001_019",
+    child_pov_f_6_11 = "B17001_020",
+    child_pov_f_12_14 = "B17001_021",
+    child_pov_f_15 = "B17001_022",
+    child_pov_f_16_17 = "B17001_023",
+    child_npov_m_u5 = "B17001_033",
+    child_npov_m_5 = "B17001_034",
+    child_npov_m_6_11 = "B17001_035",
+    child_npov_m_12_14 = "B17001_036",
+    child_npov_m_15 = "B17001_037",
+    child_npov_m_16_17 = "B17001_038",
+    child_npov_f_u5 = "B17001_047",
+    child_npov_f_5 = "B17001_048",
+    child_npov_f_6_11 = "B17001_049",
+    child_npov_f_12_14 = "B17001_050",
+    child_npov_f_15 = "B17001_051",
+    child_npov_f_16_17 = "B17001_052"
   )
   
   # Add internet only for newer years
@@ -97,7 +121,13 @@ get_census_data <- function(year) {
     mutate(
       year = year,
       state = toupper(state),
-      poverty_rate = poverty / total_pop
+      poverty_rate = poverty / total_pop,
+      child_poverty_count = child_pov_m_u5 + child_pov_m_5 + child_pov_m_6_11 + child_pov_m_12_14 + child_pov_m_15 + child_pov_m_16_17 +
+        child_pov_f_u5 + child_pov_f_5 + child_pov_f_6_11 + child_pov_f_12_14 + child_pov_f_15 + child_pov_f_16_17,
+      child_total_count = child_poverty_count +
+        child_npov_m_u5 + child_npov_m_5 + child_npov_m_6_11 + child_npov_m_12_14 + child_npov_m_15 + child_npov_m_16_17 +
+        child_npov_f_u5 + child_npov_f_5 + child_npov_f_6_11 + child_npov_f_12_14 + child_npov_f_15 + child_npov_f_16_17,
+      child_poverty_rate = child_poverty_count / child_total_count
     )
   
   # Add internet rate only if available
@@ -124,8 +154,9 @@ merged_df <- merged_df %>%
   mutate(
     post2020 = ifelse(year >= 2022, 1, 0)
   ) %>%
-  filter(!is.na(score), !is.na(median_income), !is.na(poverty_rate)) %>%
-  select(state, year, score, median_income, total_pop, poverty_rate, internet_rate, post2020)
+  filter(!is.na(score), !is.na(median_income),
+         !is.na(poverty_rate), !is.na(child_poverty_rate)) %>%
+  select(state, year, score, median_income, total_pop, poverty_rate, child_poverty_rate, internet_rate, post2020)
 
 # 5. SAVE DATASET
 # -----------------------------
@@ -249,13 +280,13 @@ ggsave("D:/PhD Study/Spring 2026/EPPS 6323/8th_grade_pre_post_bar_chart.jpg",
 
 ggplot(merged_df %>% filter(!is.na(internet_rate)), 
        aes(x = internet_rate, y = score)) +
-  geom_point(aes(size = total_pop, color = poverty_rate), alpha = 0.7) +
+  geom_point(aes(size = total_pop, color = child_poverty_rate), alpha = 0.7) +
   geom_smooth(method = "lm", color = "blue") +
   theme_minimal() +
   scale_color_gradient(low = "green", high = "red") +
   labs(title = "Reading Scores vs. Internet Access",
        x = "Internet Access Rate", y = "Reading Score",
-       size = "Population", color = "Poverty Rate")
+       size = "Population", color = "Child poverty rate")
 
 ggsave("D:/PhD Study/Spring 2026/EPPS 6323/naep_digital_divide_plot.jpg", 
        width = 10, 
@@ -264,14 +295,14 @@ ggsave("D:/PhD Study/Spring 2026/EPPS 6323/naep_digital_divide_plot.jpg",
 
 # The "Poverty-Achievement Gap" (Scatter with Facets)
 
-ggplot(merged_df, aes(x = poverty_rate, y = score)) +
+ggplot(merged_df, aes(x = child_poverty_rate, y = score)) +
   geom_point(aes(color = as.factor(post2020)), alpha = 0.6) +
   geom_smooth(method = "lm", color = "black") +
   facet_wrap(~ post2020, labeller = as_labeller(c("0" = "Pre-2020", "1" = "Post-2020"))) +
   theme_minimal() +
-  labs(title = "Impact of Poverty on Reading Scores",
+  labs(title = "Impact of child poverty on reading scores",
        subtitle = "Comparing relationship slope before and after 2020",
-       x = "Poverty Rate", y = "NAEP Score")
+       x = "Child poverty rate", y = "NAEP Score")
 
 ggsave("D:/PhD Study/Spring 2026/EPPS 6323/naep_poverty_achievement_gap_plot.jpg", 
        width = 10, 
@@ -300,16 +331,16 @@ ggsave("D:/PhD Study/Spring 2026/EPPS 6323/variation_state_reading_scores_plot.j
 
 ggplot(merged_df %>% filter(!is.na(internet_rate)), 
        aes(x = median_income, y = internet_rate)) +
-  geom_point(aes(size = total_pop, color = poverty_rate), alpha = 0.6) +
+  geom_point(aes(size = total_pop, color = child_poverty_rate), alpha = 0.6) +
   geom_smooth(method = "lm", color = "blue", linetype = "dashed") +
   scale_color_gradient(low = "green", high = "red") +
   theme_minimal() +
   labs(title = "The Digital Divide: Income vs. Internet",
-       subtitle = "Size:Population; Color:Poverty Rate",
+       subtitle = "Size:Population; Color:Child poverty rate",
        x = "Median Household Income", 
        y = "Internet Access Rate (Broadband)",
        size = "State Population",
-       color = "Poverty Rate")
+       color = "Child poverty rate")
 
 ggsave("D:/PhD Study/Spring 2026/EPPS 6323/digital_divide_income_vs_internet.jpg", 
        width = 15, 
@@ -319,14 +350,14 @@ ggsave("D:/PhD Study/Spring 2026/EPPS 6323/digital_divide_income_vs_internet.jpg
 # The "Poverty Trap" Visualization (Bivariate Analysis)
 
 ggplot(merged_df %>% filter(year == 2022), 
-       aes(x = poverty_rate, y = internet_rate)) +
+       aes(x = child_poverty_rate, y = internet_rate)) +
   geom_point(color = "darkred", size = 3) +
   geom_text(aes(label = state), vjust = -1, size = 3, check_overlap = TRUE) +
   geom_smooth(method = "loess", color = "black", alpha = 0.1) +
   theme_light() +
-  labs(title = "Poverty Trap:State-Level Digital Exclusion (2022)",
-       subtitle = "High poverty correlates with lower digital infrastructure",
-       x = "Poverty Rate", 
+  labs(title = "Child poverty and digital exclusion (2022)",
+       subtitle = "Higher child poverty tends to correlate with lower digital infrastructure",
+       x = "Child poverty rate", 
        y = "Internet Access Rate")
 
 ggsave("D:/PhD Study/Spring 2026/EPPS 6323/poverty_trap_state-level_igital_exclusion_(2022).jpg", 
@@ -339,7 +370,8 @@ ggsave("D:/PhD Study/Spring 2026/EPPS 6323/poverty_trap_state-level_igital_exclu
 library(ggcorrplot)
 
 # Calculate correlations for numeric variables
-corr_matrix <- cor(merged_df %>% select(score, median_income, poverty_rate, internet_rate, post2020), 
+# Both poverty measures for exploratory correlation; downstream models use child_poverty_rate only
+corr_matrix <- cor(merged_df %>% select(score, median_income, poverty_rate, child_poverty_rate, internet_rate, post2020), 
                    use = "complete.obs")
 
 ggcorrplot(corr_matrix, lab = TRUE, colors = c("#6D9EC1", "white", "#E46726"),

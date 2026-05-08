@@ -49,7 +49,7 @@ run_grade_shap_split_analysis <- function(path = "dataset.csv", shap_sample_max 
     dir.create(out_dir, recursive = TRUE)
   }
 
-  candidate_vars <- c("median_income", "poverty_rate", "bach_or_higher_rate", "internet_rate")
+  candidate_vars <- c("median_income", "child_poverty_rate", "bach_or_higher_rate", "internet_rate")
   candidate_vars <- candidate_vars[candidate_vars %in% names(test_sub)]
 
   numeric_summary <- do.call(

@@ -14,6 +14,7 @@ library(tidyverse)
 library(plm)
 library(lmtest)
 library(sandwich)
+library(broom)
 
 # Project-relative paths
 project_root <- getwd()
@@ -143,6 +144,71 @@ print(metrics_tbl)
 cat(sprintf("Saved model metrics: %s\n", metrics_out_path))
 
 # ----------------------------
+# VARIABLE-SPECIFIC COEFFICIENT METRICS (CSV)
+# ----------------------------
+# OLS columns: conditional association in pooled OLS (not within-state FE);
+#   conf_lower/conf_upper are standard 95% OLS intervals from broom::tidy(..., conf.int = TRUE).
+# FE columns: within-state change over time (two-way FE); robust_SE is clustered by state;
+#   conf_lower/conf_upper use coefficient +/- 1.96 * robust_SE (same as coef plots).
+
+tidy_ols_variable_metrics <- function(model, grade, model_label) {
+  t <- broom::tidy(model, conf.int = TRUE, conf.level = 0.95)
+  data.frame(
+    Grade = grade,
+    Model = model_label,
+    term = t$term,
+    coefficient_estimate = t$estimate,
+    standard_error = t$std.error,
+    t_statistic = t$statistic,
+    p_value = t$p.value,
+    conf_lower = t$conf.low,
+    conf_upper = t$conf.high,
+    stringsAsFactors = FALSE
+  )
+}
+
+tidy_fe_variable_metrics <- function(coeft, grade, model_label) {
+  est <- coeft[, 1L]
+  se <- coeft[, 2L]
+  tstat <- coeft[, 3L]
+  pval <- coeft[, 4L]
+  lo <- est - 1.96 * se
+  hi <- est + 1.96 * se
+  data.frame(
+    Grade = grade,
+    Model = model_label,
+    term = rownames(coeft),
+    FE_coefficient = est,
+    robust_SE = se,
+    t_statistic = tstat,
+    p_value = pval,
+    conf_lower = lo,
+    conf_upper = hi,
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+}
+
+ols_var_tbl <- bind_rows(
+  tidy_ols_variable_metrics(m1_g4, "Grade 4", "Model 1 (OLS)"),
+  tidy_ols_variable_metrics(m1_g8, "Grade 8", "Model 1 (OLS)")
+)
+
+fe_var_tbl <- bind_rows(
+  tidy_fe_variable_metrics(se_m2_g4, "Grade 4", "Model 2 (FE)"),
+  tidy_fe_variable_metrics(se_m3_g4, "Grade 4", "Model 3 (FE + Interactions)"),
+  tidy_fe_variable_metrics(se_m2_g8, "Grade 8", "Model 2 (FE)"),
+  tidy_fe_variable_metrics(se_m3_g8, "Grade 8", "Model 3 (FE + Interactions)")
+)
+
+ols_var_path <- file.path(output_dir, "panel_ols_variable_metrics.csv")
+fe_var_path <- file.path(output_dir, "panel_fe_variable_metrics.csv")
+write.csv(ols_var_tbl, ols_var_path, row.names = FALSE)
+write.csv(fe_var_tbl, fe_var_path, row.names = FALSE)
+cat(sprintf("Saved OLS variable metrics: %s\n", ols_var_path))
+cat(sprintf("Saved FE variable metrics: %s\n", fe_var_path))
+
+# ----------------------------
 # Fixed Effects
 # ----------------------------
 re_g4 <- plm(f_fe, data = panel4, model = "random", 
@@ -163,14 +229,12 @@ se_m2_g8_vec <- se_m2_g8[, 2]
 se_m3_g8_vec <- se_m3_g8[, 2]
 
 # Keep script output visual-only (PNG files).
-library(broom)
 
 # ─────────────────────────────────────────
 # PLOT 1: REGRESSION COEFFICIENT PLOTS
 # ─────────────────────────────────────────
 library(ggplot2)
 library(dplyr)
-library(broom)
 library(margins)
 
 # ─────────────────────────────────────────
@@ -267,7 +331,7 @@ ggsave(file.path(output_dir, "plot1_coefplot.png"),
 # Add fitted values from FE models
 # Add fitted values from FE models
 df4_model <- df4 %>%
-  filter(!is.na(score), !is.na(median_income), !is.na(poverty_rate),
+  filter(!is.na(score), !is.na(median_income),
          !is.na(internet_rate), !is.na(unemployment_rate),
          !is.na(bach_or_higher_rate), !is.na(pct_black), !is.na(pct_hispanic),
          !is.na(child_poverty_rate)) %>%
@@ -277,7 +341,7 @@ df4_model <- df4 %>%
   )
 
 df8_model <- df8 %>%
-  filter(!is.na(score), !is.na(median_income), !is.na(poverty_rate),
+  filter(!is.na(score), !is.na(median_income),
          !is.na(internet_rate), !is.na(unemployment_rate),
          !is.na(bach_or_higher_rate), !is.na(pct_black), !is.na(pct_hispanic),
          !is.na(child_poverty_rate)) %>%

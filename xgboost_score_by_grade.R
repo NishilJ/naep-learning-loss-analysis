@@ -7,7 +7,11 @@ if (length(missing_pkgs) > 0) {
 library(xgboost)
 library(Matrix)
 
-run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
+run_xgboost_score_by_grade <- function(
+    path = "dataset.csv",
+    grades = c(4, 8),
+    cache_fit = TRUE,
+    cache_path = file.path("output", "xgboost_by_grade", "xgboost_score_by_grade_fit.rds")) {
   df <- read.csv(path, stringsAsFactors = FALSE)
 
   keep_cols <- c(
@@ -42,11 +46,13 @@ run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
   )
 
   eta_vals <- c(0.03, 0.05, 0.1)
-  depth_vals <- c(3L, 4L, 6L)
+  depth_vals <- c(4L, 6L, 8L)
   max_nrounds <- 1000L
   early_stopping_rounds <- 20L
 
   results <- list()
+  metric_blocks <- list()
+  importance_blocks <- list()
 
   for (grade_value in requested_grades) {
     grade_df <- model_df[grade_labels == grade_value, ]
@@ -187,16 +193,41 @@ run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
 
     cat(sprintf("\nTop 15 feature importances (grade %s):\n", grade_value))
     importance <- xgb.importance(model = final_model, feature_names = colnames(train_matrix))
-    print(head(importance, 15))
+    imp15 <- head(importance, 15L)
+    print(imp15)
+
+    metric_blocks[[length(metric_blocks) + 1L]] <- data.frame(
+      grade = grade_value,
+      rmse = rmse,
+      mae = mae,
+      r2 = r2,
+      r2_alt = r2_alt,
+      stringsAsFactors = FALSE
+    )
+
+    importance_blocks[[length(importance_blocks) + 1L]] <- data.frame(
+      grade = grade_value,
+      importance_rank = seq_len(nrow(imp15)),
+      feature = imp15$Feature,
+      gain = imp15$Gain,
+      cover = imp15$Cover,
+      frequency = imp15$Frequency,
+      stringsAsFactors = FALSE
+    )
 
     results[[paste0("grade_", grade_value)]] <- list(
       model = final_model,
       best_params = best_params,
       rolling_validation = best_results,
-      metrics = list(rmse = rmse, mae = mae, r2 = r2),
+      metrics = list(rmse = rmse, mae = mae, r2 = r2, r2_alt = r2_alt),
+      train_df = train_df,
+      test_df = test_df,
+      train_matrix = train_matrix,
+      test_matrix = test_matrix,
       predictions = data.frame(
         state = test_df$state,
         year = test_df$year,
+        grade = test_df$grade,
         actual_score = test_label,
         predicted_score = preds
       )
@@ -207,7 +238,29 @@ run_xgboost_score_by_grade <- function(path = "dataset.csv", grades = c(4, 8)) {
     stop("No grade-specific models were trained. Check grade values and data availability.")
   }
 
+  metrics_csv <- file.path("output", "xgboost_by_grade", "xgboost_score_by_grade_metrics.csv")
+  importance_csv <- file.path("output", "xgboost_by_grade", "xgboost_score_by_grade_feature_importance_top15.csv")
+  out_dir_csv <- dirname(metrics_csv)
+  if (!dir.exists(out_dir_csv)) {
+    dir.create(out_dir_csv, recursive = TRUE)
+  }
+  write.csv(do.call(rbind, metric_blocks), metrics_csv, row.names = FALSE)
+  write.csv(do.call(rbind, importance_blocks), importance_csv, row.names = FALSE)
+  cat(sprintf("\nWrote metrics CSV: %s\n", metrics_csv))
+  cat(sprintf("Wrote feature-importance CSV: %s\n", importance_csv))
+
+  if (isTRUE(cache_fit)) {
+    cache_dir <- dirname(cache_path)
+    if (!dir.exists(cache_dir)) {
+      dir.create(cache_dir, recursive = TRUE)
+    }
+    saveRDS(results, cache_path)
+    cat(sprintf("\nSaved fitted model bundle: %s\n", cache_path))
+  }
+
   invisible(results)
 }
 
-run_xgboost_score_by_grade("dataset.csv", grades = c(4, 8))
+if (isTRUE(getOption("xgboost_score_by_grade.autorun", default = TRUE))) {
+  run_xgboost_score_by_grade("dataset.csv", grades = c(4, 8))
+}

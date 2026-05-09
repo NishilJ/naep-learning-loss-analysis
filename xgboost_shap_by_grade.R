@@ -165,7 +165,7 @@ run_xgboost_shap_by_grade <- function(
 
     write.csv(imp_df, file.path(grade_out, paste0(gk, "_global_importance.csv")), row.names = FALSE)
 
-    imp_bar_df <- imp_df[imp_df$mean_abs_shap_frac_of_total >= 0.005, , drop = FALSE]
+    imp_bar_df <- imp_df[imp_df$mean_abs_shap_frac_of_total >= 0.001, , drop = FALSE]
     if (nrow(imp_bar_df) == 0) {
       imp_bar_df <- head(imp_df, 1L)
     }
@@ -174,7 +174,7 @@ run_xgboost_shap_by_grade <- function(
       geom_col(fill = "steelblue") +
       coord_flip() +
       labs(
-        title = sprintf("Mean |SHAP| — %s (features with >=0.5% total contribution)", gk),
+        title = sprintf("Mean |SHAP| - %s (features with >=0.1%% total contribution)", gk),
         x = NULL,
         y = "Mean |contribution|"
       ) +

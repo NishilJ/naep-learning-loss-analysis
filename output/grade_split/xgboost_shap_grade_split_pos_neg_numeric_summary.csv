@@ -1,9 +1,0 @@
-"grade","variable","n_pos","n_neg","mean_pos","mean_neg","mean_diff_pos_minus_neg","median_pos","median_neg","median_diff_pos_minus_neg"
-"Grade 4","median_income",0,102,NA,77608.3137254902,NA,NA,74896,NA
-"Grade 8","median_income",102,0,77608.3137254902,NA,NA,74896,NA,NA
-"Grade 4","poverty_rate",0,102,NA,0.122962822384544,NA,NA,0.118593869812482,NA
-"Grade 8","poverty_rate",102,0,0.122962822384544,NA,NA,0.118593869812482,NA,NA
-"Grade 4","bach_or_higher_rate",0,102,NA,0.345640644057363,NA,NA,0.337898984947536,NA
-"Grade 8","bach_or_higher_rate",102,0,0.345640644057363,NA,NA,0.337898984947536,NA,NA
-"Grade 4","internet_rate",0,102,NA,0.892912802710325,NA,NA,0.897043178260609,NA
-"Grade 8","internet_rate",102,0,0.892912802710325,NA,NA,0.897043178260609,NA,NA
